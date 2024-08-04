@@ -1,0 +1,119 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '6.0.24'
+    id 'java'
+}
+
+version = '1.0.0' // Replace with your mod version
+group = 'com.example.mymod' // Replace with your group ID
+
+base {
+    archivesName = 'mymod' // Replace with your mod ID
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+
+minecraft {
+    mappings channel: 'official', version: '1.21'
+    reobf = false
+    copyIdeResources = true
+
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+        }
+
+        client {
+            property 'forge.enabledGameTestNamespaces', 'mymod' // Replace with your mod ID
+        }
+
+        server {
+            property 'forge.enabledGameTestNamespaces', 'mymod' // Replace with your mod ID
+            args '--nogui'
+        }
+
+        gameTestServer {
+            property 'forge.enabledGameTestNamespaces', 'mymod' // Replace with your mod ID
+        }
+
+        data {
+            workingDirectory project.file('run-data')
+            args '--mod', 'mymod', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'forge'
+        url = 'https://maven.minecraftforge.net/'
+    }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.21-51.0.30'
+    implementation('net.sf.jopt-simple:jopt-simple:5.0.4') {
+        version { strictly '5.0.4' }
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.property 'mod_version', version
+    inputs.property 'mod_group_id', group
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand 'mod_version': version, 'mod_group_id': group
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes(
+            'Specification-Title': 'mymod', // Replace with your mod ID
+            'Specification-Vendor': 'Your Name', // Replace with the mod author
+            'Specification-Version': '1', // We are version 1 of ourselves
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'Your Name' // Replace with the mod author
+        )
+    }
+}
+
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            artifact tasks.jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+eclipse {
+    synchronizationTasks 'genEclipseRuns'
+}
+
+sourceSets.each {
+    def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+    it.output.resourcesDir = dir
+    it.java.destinationDirectory = dir
+}
